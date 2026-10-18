@@ -90,4 +90,12 @@ https://htat.longsan6180.workers.dev
 
 ## License
 
-本项目代码按原样提供，仅用于功能展示与学习交流。
+本项目基于 [MIT License](LICENSE) 开源，可自由使用、修改与分发。
+
+### 第三方组件
+
+| 组件 | 许可证 | 说明 |
+|---|---|---|
+| [TradingView Lightweight Charts](https://github.com/tradingview/lightweight-charts) v4.2.0 | Apache-2.0 | K 线图表渲染库，见 `public/lightweight-charts.standalone.production.js`（版权声明保留于文件头） |
+
+字体（Inter、JetBrains Mono）通过 Google Fonts CDN 加载，遵循其各自的使用条款。
