@@ -1,0 +1,985 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title data-i18n="doc.pageTitle">HTAT - AI 交易模拟</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="alternate icon" type="image/jpeg" href="/logo.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="/logo.jpg">
+  <link rel="apple-touch-icon" sizes="512x512" href="/logo-maskable-512.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/logo-maskable-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="/styles.css?v=htat-20261017a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="/lightweight-charts.standalone.production.js?v=htat-20260914"></script>
+  <script src="/i18n.js?v=htat-20260915"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 横屏提示遮罩 -->
+    <div class="landscape-overlay hidden" id="landscape-overlay">
+      <div class="landscape-message">
+        <button class="landscape-close-btn" id="landscape-close-btn" type="button" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <div class="landscape-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="4" y="2" width="16" height="20" rx="2"/>
+            <circle cx="12" cy="18" r="1"/>
+          </svg>
+        </div>
+        <h2 id="landscape-overlay-title" data-i18n="landscape.title">请横屏使用</h2>
+        <p id="landscape-overlay-desc" data-i18n="landscape.desc">为了获得最佳浏览体验，请横屏查看图表</p>
+        <button class="fullscreen-btn" id="fullscreen-btn" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+          <span id="fullscreen-btn-text" data-i18n="fullscreen.btn">全屏</span>
+        </button>
+        <button class="landscape-dismiss-btn hidden" id="landscape-dismiss-btn" type="button">
+          <span data-i18n="landscape.dismiss">我知道了</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== 登录页面 ========== -->
+    <div class="login-page" id="login-page">
+      <!-- 背景 -->
+      <div class="login-bg"></div>
+
+      <!-- 主内容 - 左右分栏 -->
+      <div class="login-layout">
+        <!-- 左侧：品牌和登录表单 -->
+        <div class="login-left">
+          <div class="login-form-section">
+            <!-- Logo 和语言选择 -->
+            <div class="login-header">
+              <div class="login-logo">
+                <div class="logo-icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 17l6-6 4 4 8-8"/>
+                    <path d="M17 7h4v4"/>
+                  </svg>
+                </div>
+                <span class="logo-copy">
+                  <span class="logo-text">
+                    <span class="logo-text-global">HTAT</span>
+                  </span>
+                </span>
+              </div>
+            </div>
+            <!-- 语言选择器（移动端在右上角） -->
+            <div class="lang-selector mobile-top-right" id="login-lang-selector">
+              <button class="lang-btn" id="login-lang-btn" aria-label="Select language">
+                <span class="lang-current" id="login-lang-current">
+                  <span class="lang-flag" id="login-lang-flag">🌐</span>
+                  <span class="lang-text" id="login-lang-text" data-i18n="nav.mode">中文</span>
+                </span>
+                <svg class="lang-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              <div class="lang-dropdown" id="login-lang-dropdown" style="display: none;">
+                <div class="lang-search">
+                  <input type="text" class="lang-search-input" placeholder="Search language..." id="login-lang-search">
+                </div>
+                <div class="lang-list" id="login-lang-list"></div>
+              </div>
+            </div>
+
+            <!-- 标题 -->
+            <div class="login-heading">
+              <h1 data-i18n="login.title">Human Trading <span class="vs-badge">VS</span> AI Trading</h1>
+              <p data-i18n="login.subtitle">验证你的交易策略，体验 AI 技术分析</p>
+              <p class="login-tagline" data-i18n="login.tagline">AI 辅助交易训练平台</p>
+            </div>
+
+            <!-- 登录表单 -->
+            <div class="login-form-box" id="login-form-box">
+              <!-- 调试信息（仅开发时使用） -->
+              <div id="debug-info" style="display:none; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; font-family: monospace;">
+                输入的邮箱: <span id="debug-email">--</span>
+              </div>
+
+              <!-- 登录方式选项卡 -->
+              <div class="login-tabs" id="login-tabs">
+                <button type="button" class="login-tab active" data-login-mode="password"><span data-i18n="login.passwordLogin">密码登录</span></button>
+                <button type="button" class="login-tab" data-login-mode="code"><span data-i18n="login.codeLogin">验证码登录</span></button>
+                <button type="button" class="login-tab" data-login-mode="register"><span data-i18n="login.registerTab">注册</span></button>
+              </div>
+
+              <!-- 密码登录 -->
+              <div class="login-step active" id="step-password">
+                <form class="login-form" id="form-password">
+                  <div class="form-field">
+                    <input
+                      type="email"
+                      id="password-email-input"
+                      class="form-input"
+                      placeholder="name@example.com"
+                      data-i18n-placeholder="login.emailPlaceholder"
+                      autocomplete="email"
+                      required
+                    >
+                    <p class="login-email-hint" data-i18n="login.emailHint">仅支持 qq.com / gmail.com 邮箱</p>
+                  </div>
+                  <div class="form-field">
+                    <div class="password-wrapper">
+                      <input
+                        type="password"
+                        id="password-input"
+                        class="form-input"
+                        placeholder="请输入密码"
+                        data-i18n-placeholder="login.passwordPlaceholder"
+                        autocomplete="current-password"
+                        required
+                      >
+                      <button type="button" class="password-toggle" data-password-toggle="password-input" data-i18n-title="login.showPassword" title="显示密码" aria-label="显示密码">
+                        <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <button type="submit" class="submit-btn" id="btn-password-login">
+                    <span data-i18n="login.loginBtn">登录</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+
+              <!-- 步骤1：输入邮箱（验证码登录 / 注册共用） -->
+              <div class="login-step" id="step-email">
+                <form class="login-form" id="form-email">
+                  <div class="form-field">
+                    <input
+                      type="email"
+                      id="email-input"
+                      class="form-input"
+                      placeholder="name@example.com"
+                      data-i18n-placeholder="login.emailPlaceholder"
+                      autocomplete="email"
+                      required
+                    >
+                    <p class="login-email-hint" data-i18n="login.emailHint">仅支持 qq.com / gmail.com 邮箱</p>
+                  </div>
+                  <button type="submit" class="submit-btn" id="btn-send-code">
+                    <span data-i18n="login.sendCode">发送验证码</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+
+              <!-- 步骤2：输入验证码（验证码登录） -->
+              <div class="login-step" id="step-code">
+                <p class="code-hint"><span data-i18n="login.verificationSent">验证码已发送至</span> <span class="highlight" id="masked-email"></span></p>
+                <form class="login-form" id="form-code">
+                  <div class="form-field">
+                    <input
+                      type="text"
+                      id="code-input"
+                      class="form-input"
+                      placeholder="输入6位验证码"
+                      data-i18n-placeholder="login.codePlaceholder"
+                      maxlength="6"
+                      inputmode="numeric"
+                      pattern="[0-9]*"
+                      autocomplete="one-time-code"
+                      required
+                    >
+                    <p class="login-email-hint" data-i18n="login.codeHint">未找到请检查垃圾邮件等</p>
+                  </div>
+                  <div class="code-dots" id="code-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                  </div>
+                  <button type="button" class="submit-btn" id="btn-login">
+                    <span data-i18n="login.verifyLogin">验证登录</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                  <button type="button" class="back-link" id="btn-back">
+                    <span data-i18n="login.backToEmail">返回重新输入邮箱</span>
+                  </button>
+                </form>
+                <div class="resend-row">
+                  <span data-i18n="login.noCodeReceived">没有收到？</span>
+                  <button type="button" class="resend-btn" id="btn-resend" disabled>
+                    <span id="resend-countdown">60</span><span data-i18n="login.resendIn">秒后重试</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 注册：验证码 + 设置密码 -->
+              <div class="login-step" id="step-register">
+                <p class="code-hint"><span data-i18n="login.verificationSent">验证码已发送至</span> <span class="highlight" id="reg-masked-email"></span></p>
+                <form class="login-form" id="form-register">
+                  <div class="form-field">
+                    <input
+                      type="text"
+                      id="reg-code-input"
+                      class="form-input"
+                      placeholder="输入6位验证码"
+                      data-i18n-placeholder="login.codePlaceholder"
+                      maxlength="6"
+                      inputmode="numeric"
+                      pattern="[0-9]*"
+                      autocomplete="one-time-code"
+                      required
+                    >
+                  </div>
+                  <div class="form-field">
+                    <div class="password-wrapper">
+                      <input
+                        type="password"
+                        id="reg-password-input"
+                        class="form-input"
+                        placeholder="设置密码（至少8位，含字母和数字）"
+                        data-i18n-placeholder="login.setPasswordPlaceholder"
+                        autocomplete="new-password"
+                        required
+                      >
+                      <button type="button" class="password-toggle" data-password-toggle="reg-password-input" data-i18n-title="login.showPassword" title="显示密码" aria-label="显示密码">
+                        <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      </button>
+                    </div>
+                    <div class="password-strength hidden" id="password-strength">
+                      <div class="strength-bar"><span class="strength-fill" id="strength-fill"></span></div>
+                      <span class="strength-label" id="strength-label"></span>
+                    </div>
+                  </div>
+                  <div class="form-field">
+                    <div class="password-wrapper">
+                      <input
+                        type="password"
+                        id="reg-password-confirm"
+                        class="form-input"
+                        placeholder="确认密码"
+                        data-i18n-placeholder="login.confirmPasswordPlaceholder"
+                        autocomplete="new-password"
+                        required
+                      >
+                      <button type="button" class="password-toggle" data-password-toggle="reg-password-confirm" data-i18n-title="login.showPassword" title="显示密码" aria-label="显示密码">
+                        <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      </button>
+                    </div>
+                    <p class="login-email-hint" data-i18n="login.passwordHint">密码至少 8 位，需包含字母和数字</p>
+                  </div>
+                  <button type="submit" class="submit-btn" id="btn-register">
+                    <span data-i18n="login.registerBtn">注册并登录</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                  <button type="button" class="back-link" id="btn-register-back">
+                    <span data-i18n="login.backToEmail">返回重新输入邮箱</span>
+                  </button>
+                </form>
+                <div class="resend-row">
+                  <span data-i18n="login.noCodeReceived">没有收到？</span>
+                  <button type="button" class="resend-btn" id="btn-reg-resend" disabled>
+                    <span id="reg-resend-countdown">60</span><span data-i18n="login.resendIn">秒后重试</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 功能特点 -->
+            <div class="login-features">
+              <div class="feature">
+                <span data-i18n="login.feature1">实时K线</span>
+              </div>
+              <div class="feature">
+                <span data-i18n="login.feature2">AI分析</span>
+              </div>
+              <div class="feature">
+                <span data-i18n="login.feature3">技术分析</span>
+              </div>
+            </div>
+
+            <!-- 底部条款 -->
+            <p class="login-terms">
+              <span data-i18n="login.termsText">登录即表示同意</span> <a href="#" id="terms-of-service" data-i18n="login.termsOfService">服务条款</a> <span data-i18n="login.and">和</span> <a href="#" id="privacy-policy" data-i18n="login.privacyPolicy">隐私政策</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- 右侧：机器人图片 -->
+        <div class="login-right" id="login-right">
+          <div class="robot-section">
+            <div class="robot-glow"></div>
+            <img src="/jqr1.jpg" alt="AI Robot" class="robot-image" id="robot-image">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 主应用内容 ========== -->
+    <div class="app-content hidden" id="app-content">
+      <!-- 顶部导航 -->
+      <header class="header">
+        <div class="header-left">
+          <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 17l6-6 4 4 8-8"/>
+              <path d="M17 7h4v4"/>
+            </svg>
+            <span>HTAT</span>
+          </div>
+        </div>
+
+        <div class="header-center">
+          <div class="credits-control">
+            <div class="credits-badge" id="credits-display">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span id="credits-remaining" data-i18n="nav.credits">余额: 0</span>
+            </div>
+            <button class="credits-btn" id="credits-btn" title="积分">
+              <span>+</span>
+              <span data-i18n="nav.recharge">积分</span>
+            </button>
+            <button class="claim-free-btn" id="claim-free-btn" type="button" data-i18n-title="nav.claimFreeTitle" title="领取免费积分">
+              <span data-i18n="nav.claimFree">领取</span>
+            </button>
+          </div>
+          <button class="mode-dropdown-btn" id="mode-dropdown-btn" title="切换模式">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+            </svg>
+            <span data-i18n="nav.mode">模式</span>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+            <span class="mode-option-badge mode-dropdown-badge hidden" id="pattern-mode-button-badge"></span>
+          </button>
+          <div class="mode-dropdown hidden" id="mode-dropdown">
+            <button class="mode-option active" data-mode="trading">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              <span data-i18n="mode.trading">短线交易模拟</span>
+            </button>
+            <button class="mode-option" data-mode="pattern">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"/>
+                <path d="M18 17V9"/>
+                <path d="M13 17V5"/>
+                <path d="M8 17v-3"/>
+              </svg>
+              <span data-i18n="mode.pattern">技术形态模拟</span>
+              <span class="mode-option-badge hidden" id="pattern-mode-badge"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- BTLUO量化 -->
+          <a class="header-btluo-btn" href="https://btluo.com/" target="_blank" rel="noopener noreferrer" data-i18n="nav.btluo" data-i18n-title="nav.btluo" title="BTLUO量化">
+            BTLUO量化
+          </a>
+
+          <!-- 下载按钮 -->
+          <button class="header-install-btn" id="install-btn" data-i18n-title="nav.install" title="添加到桌面">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+
+          <!-- 全屏按钮 -->
+          <button class="header-fullscreen-btn" id="header-fullscreen-btn" data-i18n-title="fullscreen.btn" title="全屏">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          </button>
+
+          <!-- 退出登录按钮 -->
+          <button class="logout-btn" id="logout-btn" data-i18n-title="nav.logout" title="退出登录">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
+
+          <div class="lang-selector" id="app-lang-selector">
+            <button class="lang-btn" id="app-lang-btn" aria-label="Select language">
+              <span class="lang-current">
+                <span class="lang-flag" id="app-lang-flag">🌐</span>
+                <span class="lang-text" id="app-lang-text" data-i18n="nav.language">语言</span>
+              </span>
+              <svg class="lang-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+            <div class="lang-dropdown" id="app-lang-dropdown" style="display: none;">
+              <div class="lang-search">
+                <input type="text" class="lang-search-input" placeholder="Search language..." id="app-lang-search">
+              </div>
+              <div class="lang-list" id="app-lang-list"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 主内容区 -->
+      <main class="main-content mode-page" id="trading-page">
+        <!-- 左侧：用户持仓面板 -->
+        <aside class="panel panel-left" id="panel-user">
+          <div class="panel-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span data-i18n="panel.user">我的持仓</span>
+          </div>
+
+          <!-- 账户概览 -->
+          <div class="account-overview">
+            <div class="stat-row">
+              <span class="stat-label" data-i18n="panel.totalPnl">个人总盈亏</span>
+              <span class="stat-value" id="user-total-pnl">$0.00</span>
+            </div>
+            <div class="stat-row global-pnl-row">
+              <span class="stat-label" data-i18n="panel.globalUserPnl">人类总盈亏</span>
+              <span class="stat-value" id="user-global-pnl">$0.00</span>
+            </div>
+          </div>
+
+          <!-- 当前持仓 -->
+          <div class="position-section">
+            <div class="position-card" id="user-position-card">
+              <div class="no-position">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v4M12 16h.01"/>
+                </svg>
+                <span data-i18n="panel.noPosition">暂无持仓</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 交易按钮 -->
+          <div class="trade-buttons">
+            <div class="trade-row-top">
+              <div class="trade-input-group">
+                <label data-i18n="trade.margin">保证金</label>
+                <div class="trade-quantity-field">
+                  <input type="number" id="trade-quantity" class="trade-quantity-input" value="1" min="1" max="9999999999" step="0.01">
+                  <button type="button" class="quick-btn trade-quantity-quick-btn" id="trade-quantity-plus-10">+10%</button>
+                </div>
+              </div>
+              <div class="leverage-group">
+                <label data-i18n="trade.leverage">杠杆</label>
+                <input type="number" id="leverage-input" class="leverage-input" value="20" min="1" max="200" step="1" placeholder="1-200">
+              </div>
+            </div>
+            <div class="trade-row-bottom">
+              <button class="trade-btn long-btn" id="btn-long" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+                <span id="btn-long-text" data-i18n="trade.long">做多</span>
+              </button>
+              <button class="trade-btn short-btn" id="btn-short" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12l7 7 7-7"/>
+                </svg>
+                <span id="btn-short-text" data-i18n="trade.short">做空</span>
+              </button>
+              <button class="trade-btn close-btn" id="btn-close" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+                <span id="btn-close-text" data-i18n="trade.close">平仓</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 历史订单 -->
+          <div class="history-section">
+            <h3 class="section-title" data-i18n="panel.history">你的本次走势操作记录</h3>
+            <div class="history-list" id="user-history">
+              <div class="empty-history">
+                <span data-i18n="panel.noHistory">暂无成交记录</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- 中间：K线图表区 -->
+        <section class="chart-section" id="chart-section">
+          <div class="chart-container" id="chart-container">
+            <div class="chart-history-loading hidden" id="chart-history-loading">
+              <div class="chart-loading-spinner"></div>
+            </div>
+          </div>
+
+          <div class="chart-toolbar">
+            <div class="chart-region-switcher" id="chart-region-selector" role="group" aria-label="Chart region selector">
+              <button type="button" class="chart-region-btn" data-region="cn" data-i18n-title="chart.regionCN" title="中国">中国</button>
+              <button type="button" class="chart-region-btn active" data-region="global" data-i18n-title="chart.regionGlobal" title="国际">国际</button>
+            </div>
+            <div class="chart-symbol-switcher" id="chart-symbol-selector" role="group" aria-label="Chart symbol selector">
+              <button type="button" class="chart-symbol-btn active" data-symbol="BTC">B</button>
+              <button type="button" class="chart-symbol-btn" data-symbol="XAU">X</button>
+            </div>
+            <div class="chart-timeframe-switcher" id="chart-timeframe-selector">
+              <button type="button" class="chart-timeframe-trigger" id="chart-timeframe-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="chart-timeframe-menu">
+                <span class="chart-timeframe-current" id="chart-timeframe-current">15m</span>
+                <span class="chart-timeframe-caret">▼</span>
+              </button>
+              <div class="chart-timeframe-menu hidden" id="chart-timeframe-menu">
+                <button type="button" class="chart-timeframe-btn active" data-timeframe="15m">15m</button>
+                <button type="button" class="chart-timeframe-btn" data-timeframe="1h">1h</button>
+                <button type="button" class="chart-timeframe-btn" data-timeframe="4h">4h</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右侧：AI 面板 -->
+        <aside class="panel panel-right" id="panel-ai">
+          <div class="panel-header ai-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 8V4H8"/>
+              <rect x="8" y="8" width="8" height="8" rx="2"/>
+              <path d="M12 16v4M8 20h8"/>
+            </svg>
+            <span data-i18n="panel.ai">AI 交易代理</span>
+          </div>
+
+          <div class="strategy-action-group strategy-action-group-inline">
+            <button class="panel-action-btn panel-action-btn-compact" id="strategy-lib-btn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 10h6"/></svg>
+              我的策略库
+            </button>
+          </div>
+
+          <!-- AI 账户概览 -->
+          <div class="account-overview">
+            <div class="stat-row">
+              <span class="stat-label" data-i18n="panel.totalPnlGlobal">AI总盈亏</span>
+              <span class="stat-value" id="ai-total-pnl">$0.00</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label" data-i18n="panel.aiVirtualBalance">AI余额</span>
+              <span class="stat-value" id="ai-virtual-balance" hidden></span>
+            </div>
+          </div>
+
+          <!-- AI 当前持仓 -->
+          <div class="position-section">
+            <div class="position-card ai-position" id="ai-position-card">
+              <div class="no-position">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v4M12 16h.01"/>
+                </svg>
+                <span data-i18n="panel.noPosition">暂无持仓</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI 操作日志 -->
+          <div class="ai-log-section">
+            <h3 class="section-title">
+              <span data-i18n="panel.aiLog">本次走势AI操作记录</span>
+              <span class="log-count" id="ai-log-count">0</span>
+            </h3>
+            <div class="ai-log-list" id="ai-log">
+              <div class="empty-log">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                  <path d="M12 8v4M12 16h.01"/>
+                  <circle cx="12" cy="12" r="10"/>
+                </svg>
+                <span data-i18n="panel.aiObserving">AI 正在观察市场...</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <main class="mode-page mode-chart-page" id="pattern-page">
+        <section class="chart-section mode-chart-section" id="pattern-chart-section">
+          <div class="chart-container" id="pattern-chart-container">
+            <div class="chart-loading hidden" id="pattern-chart-loading">
+              <div class="chart-loading-spinner"></div>
+              <span data-i18n="chart.loading">加载图表中...</span>
+            </div>
+            <div class="pattern-stage-watermark hidden" id="pattern-stage-watermark">阶段1</div>
+          </div>
+          <div class="chart-stats">
+            <span class="last-update" id="pattern-last-update">--:--:--</span>
+          </div>
+          <div class="pattern-simulator" id="pattern-simulator">
+            <div class="pattern-screen-start" id="pattern-phase-idle">
+              <div class="pattern-start-card">
+                <div class="pattern-start-icon">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"/>
+                    <path d="M18 17V9"/>
+                    <path d="M13 17V5"/>
+                    <path d="M8 17v-3"/>
+                  </svg>
+                </div>
+                <h3 data-i18n="pattern.startCardTitle">技术形态模拟</h3>
+                <p data-i18n="pattern.startCardDesc">系统会生成一段典型 K 线形态，你需要先判断后续方向，再查看模拟走势结果。</p>
+                <button class="mode-launch-btn" id="pattern-start-btn" type="button"><span data-i18n="pattern.startCardBtn">开始技术形态模拟</span><span class="pattern-launch-reward-dot hidden" id="pattern-start-btn-badge"></span></button>
+              </div>
+            </div>
+
+            <div class="pattern-screen-active hidden" id="pattern-phase-phase1">
+              <div class="pattern-layout">
+                <div class="pattern-operation-rail">
+                  <div class="pattern-topbar">
+                    <div class="pattern-topbar-copy">
+                      <span class="pattern-topbar-eyebrow" data-i18n="pattern.phase1Eyebrow">阶段1 · 形态预览</span>
+                      <div class="pattern-topbar-heading">
+                        <h4 id="pattern-name">--</h4>
+                        <span class="pattern-status-badge preview" data-i18n="pattern.phase1Badge">判断中</span>
+                      </div>
+                      <p id="pattern-description" data-i18n="pattern.phase1Desc">观察当前 K 线结构并判断后续方向。</p>
+                    </div>
+                  </div>
+                  <div class="pattern-panel-card pattern-bottom-card">
+                    <div class="pattern-phase-body">
+                      <h4 class="pattern-question-title" data-i18n="pattern.phase1Question">你判断后续走势方向是？</h4>
+                      <div class="pattern-direction-picker">
+                        <button class="decision-btn pattern-direction-btn" data-direction="long" type="button">
+                          <span class="pattern-direction-cost">-30</span>
+                          <span class="pattern-direction-label" data-i18n="pattern.directionLong">看涨</span>
+                        </button>
+                        <button class="decision-btn pattern-direction-btn" data-direction="short" type="button">
+                          <span class="pattern-direction-cost">-30</span>
+                          <span class="pattern-direction-label" data-i18n="pattern.directionShort">看跌</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="pattern-chart-spacer"></div>
+              </div>
+            </div>
+
+            <div class="pattern-screen-active hidden" id="pattern-phase-phase2">
+              <div class="pattern-layout">
+                <div class="pattern-operation-rail">
+                  <div class="pattern-topbar">
+                    <div class="pattern-topbar-copy">
+                      <span class="pattern-topbar-eyebrow" id="pattern-phase2-eyebrow" data-i18n="pattern.phase2Eyebrow">阶段2 · 教学绘图</span>
+                      <div class="pattern-topbar-heading">
+                        <h4 id="pattern-phase2-title" data-i18n="pattern.phase2Title">正在绘制技术形态教学图</h4>
+                        <span class="pattern-status-badge replay" id="pattern-phase2-badge" data-i18n="pattern.phase2Badge">绘图中</span>
+                      </div>
+                      <p id="pattern-phase2-desc" data-i18n="pattern.phase2Desc">系统正在补齐形态结构、关键点和教学标注。绘图结束后可以查看 AI 形态解读。</p>
+                    </div>
+                  </div>
+                  <div class="pattern-panel-card pattern-bottom-card">
+                    <div class="pattern-phase-body">
+                      <div class="replay-info" id="pattern-user-choice">
+                        <span data-i18n="pattern.userChoice">你的判断</span>
+                        <span class="choice-value">--</span>
+                      </div>
+                      <div class="replay-info" id="pattern-ai-choice">
+                        <span data-i18n="pattern.aiChoice">AI 判断</span>
+                        <span class="choice-value">--</span>
+                      </div>
+                      <button class="mode-launch-btn hidden" id="pattern-ai-reveal-btn" type="button" data-i18n="pattern.aiRevealBtn">查看 AI 形态解读</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="pattern-chart-spacer"></div>
+              </div>
+            </div>
+
+            <div class="pattern-screen-active hidden" id="pattern-phase-phase3">
+              <div class="pattern-layout">
+                <div class="pattern-operation-rail">
+                  <div class="pattern-topbar">
+                    <div class="pattern-topbar-copy">
+                      <span class="pattern-topbar-eyebrow" data-i18n="pattern.phase3Eyebrow">阶段3 · 走势回放</span>
+                      <div class="pattern-topbar-heading">
+                        <h4 data-i18n="pattern.phase3Title">正在补齐剩余 K 线走势</h4>
+                        <span class="pattern-status-badge replay" data-i18n="pattern.phase3Badge">回放中</span>
+                      </div>
+                      <p data-i18n="pattern.phase3Desc">AI 解读已展示，系统开始补齐剩余走势并展示最终结果。</p>
+                    </div>
+                  </div>
+                  <div class="pattern-ai-judgement pattern-phase3-ai-card hidden" id="pattern-ai-analysis-panel" data-pattern-ai-analysis-panel>
+                    <span class="pattern-ai-judgement-label" data-i18n="pattern.aiJudgementLabel">AI 形态解读</span>
+                    <span class="pattern-ai-judgement-value" id="pattern-ai-analysis-title" data-pattern-ai-analysis-title>--</span>
+                    <span class="pattern-ai-judgement-copy" id="pattern-ai-analysis-copy" data-pattern-ai-analysis-copy></span>
+                  </div>
+                  <div class="pattern-panel-card pattern-bottom-card">
+                    <div class="pattern-phase-body">
+                      <div class="replay-info">
+                        <span data-i18n="pattern.replayProgress">回放进度</span>
+                        <span id="pattern-replay-progress">0 / 0</span>
+                      </div>
+                      <div class="pattern-replay-progress">
+                        <div class="pattern-replay-progress-fill" id="pattern-replay-progress-fill"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="pattern-chart-spacer"></div>
+              </div>
+            </div>
+
+            <div class="pattern-screen-active hidden" id="pattern-phase-result">
+              <div class="pattern-layout">
+                <div class="pattern-operation-rail">
+                  <div class="pattern-topbar">
+                    <div class="pattern-topbar-copy">
+                      <span class="pattern-topbar-eyebrow" data-i18n="pattern.resultEyebrow">模拟结果</span>
+                      <div class="pattern-topbar-heading">
+                        <h4 id="pattern-result-title">--</h4>
+                        <span class="pattern-status-badge result" data-i18n="pattern.resultBadge">已完成</span>
+                      </div>
+                      <p id="pattern-result-desc"></p>
+                    </div>
+                  </div>
+                  <div class="pattern-ai-judgement pattern-result-ai-card hidden" data-pattern-ai-analysis-panel>
+                    <span class="pattern-ai-judgement-label" data-i18n="pattern.aiJudgementLabel">AI 形态解读</span>
+                    <span class="pattern-ai-judgement-value" data-pattern-ai-analysis-title>--</span>
+                    <span class="pattern-ai-judgement-copy" data-pattern-ai-analysis-copy></span>
+                  </div>
+                  <div class="pattern-panel-card pattern-bottom-card">
+                    <div class="pattern-phase-body">
+                      <div class="pattern-result-summary">
+                        <div class="pattern-result-item" id="pattern-user-result">
+                          <span class="pattern-result-label" data-i18n="pattern.resultUserLabel">你的判断</span>
+                          <span class="pattern-result-value result-value">--</span>
+                        </div>
+                        <div class="pattern-result-item result">
+                          <span class="pattern-result-label" data-i18n="pattern.resultFinalLabel">最终方向</span>
+                          <span class="pattern-result-value stat-value" id="pattern-final-direction">--</span>
+                        </div>
+                      </div>
+                      <div class="pattern-phase-body" id="pattern-signals-summary"></div>
+                      <div class="pattern-result-actions">
+                        <button class="mode-launch-btn" id="pattern-restart-btn" type="button" data-i18n="pattern.restartBtn">再来一次</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="pattern-chart-spacer"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-left">
+          <span class="status-indicator connected" id="connection-status">
+            <span class="status-dot"></span>
+            <span data-i18n="status.connected">已连接</span>
+          </span>
+          <span class="footer-divider">|</span>
+          <span class="footer-info" id="tick-info" data-i18n="status.waiting">等待数据...</span>
+        </div>
+        <div class="footer-right">
+          <span class="footer-brand">HTAT v1.0</span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="strategy-lib-modal">
+    <div class="strategy-modal strategy-modal-lib">
+      <div class="modal-header strategy-lib-header">
+        <div class="strategy-lib-tabs">
+          <button class="strategy-lib-tab active" data-tab="overview" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            我的策略
+          </button>
+          <button class="strategy-lib-tab" data-tab="upload" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            上传策略
+          </button>
+        </div>
+        <button class="modal-close" id="strategy-lib-close" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tab: 策略概览 -->
+      <div class="strategy-lib-panel active" data-panel="overview">
+        <div class="modal-body strategy-modal-body strategy-stats-body">
+          <div class="strategy-summary-grid" id="strategy-stats-summary"></div>
+          <div class="strategy-stats-layout">
+            <div class="strategy-list-panel">
+              <div class="strategy-list-header">
+                <span>我的策略</span>
+                <button class="purchase-btn purchase-btn-secondary strategy-refresh-btn" id="strategy-stats-refresh" type="button">刷新</button>
+              </div>
+              <div class="strategy-list" id="strategy-stats-list">
+                <div class="strategy-empty-state">暂无策略，点击「上传策略」添加</div>
+              </div>
+            </div>
+            <div class="strategy-detail-panel" id="strategy-stats-detail">
+              <div class="strategy-empty-state">选择一条策略查看详情</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 上传策略 -->
+      <div class="strategy-lib-panel" data-panel="upload">
+        <div class="modal-body strategy-modal-body">
+          <div class="strategy-upload-intro">输入策略名称和原始内容，AI 会自动标准化重构后入库</div>
+          <div class="strategy-form-grid">
+            <div class="strategy-form-field">
+              <label for="strategy-upload-name">策略名称</label>
+              <input type="text" id="strategy-upload-name" maxlength="40" autocomplete="off" placeholder="例如：EMA 趋势 + RSI 过滤">
+            </div>
+            <div class="strategy-form-field strategy-form-field-full">
+              <label for="strategy-upload-content">策略内容</label>
+              <textarea id="strategy-upload-content" class="strategy-textarea" placeholder="请输入你的策略原文、交易逻辑、入场/出场条件、风控要求等"></textarea>
+            </div>
+          </div>
+          <div class="strategy-upload-status" id="strategy-upload-status"></div>
+          <div class="strategy-preview-card" id="strategy-upload-preview">
+            <div class="strategy-empty-state">AI 标准化后的策略预览</div>
+          </div>
+          <div class="strategy-modal-actions">
+            <button class="purchase-btn purchase-btn-secondary" id="strategy-upload-reset" type="button">清空</button>
+            <button class="purchase-btn" id="strategy-upload-submit" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              AI 标准化并保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 充值弹窗 -->
+  <div class="modal-overlay hidden" id="purchase-modal">
+    <div class="purchase-modal">
+      <div class="modal-header">
+        <h3 data-i18n="purchase.title">兑换积分</h3>
+        <button class="modal-close" id="purchase-modal-close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body purchase-modal-body">
+        <div class="purchase-info">
+          <div class="purchase-balance">
+            <span data-i18n="purchase.currentBalance">当前余额：</span><span id="purchase-current-credits">0</span> <span data-i18n="purchase.unit">积分</span>
+          </div>
+        </div>
+        <div class="purchase-flow-panel">
+          <div class="purchase-flow-section">
+            <div class="purchase-section-title" data-i18n="purchase.redeemSectionTitle">使用兑换码</div>
+            <div class="purchase-redeem-field">
+              <label data-i18n="purchase.customLabel">兑换码：</label>
+              <input type="text" id="purchase-redeem-code" data-i18n-placeholder="purchase.customPlaceholder" placeholder="输入兑换码" maxlength="64" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="purchase-redeem-status" id="purchase-redeem-status"></div>
+            <button class="purchase-btn" id="purchase-confirm-btn" data-i18n="purchase.confirm">立即兑换</button>
+            <div class="purchase-trade-actions">
+              <div class="purchase-market-dropdown" id="purchase-taobao-market">
+                <button class="purchase-btn purchase-btn-market purchase-btn-taobao" id="purchase-taobao-market-btn" type="button" data-i18n="purchase.taobaoBuy">淘宝积分市场</button>
+                <div class="purchase-merchant-list hidden" id="purchase-taobao-merchant-list">
+                  <div class="purchase-merchant-empty" data-i18n="purchase.taobaoMerchantLoading">正在加载淘宝商家...</div>
+                </div>
+              </div>
+              <button class="purchase-btn purchase-btn-link purchase-btn-market purchase-btn-pending" id="purchase-amazon-link" type="button" disabled data-i18n="purchase.amazonBuyPending">亚马逊积分交易（暂未开放）</button>
+            </div>
+          </div>
+
+          <div class="purchase-flow-divider"></div>
+
+          <div class="purchase-flow-section">
+            <div class="purchase-section-title" data-i18n="purchase.convertSectionTitle">积分转兑换码</div>
+            <div class="purchase-redeem-field">
+              <label data-i18n="purchase.convertLabel">转换积分：</label>
+              <input type="number" id="purchase-convert-credits" data-i18n-placeholder="purchase.convertPlaceholder" placeholder="输入要转换的积分数量" min="10000" max="9999999999" step="1" inputmode="numeric">
+            </div>
+            <div class="purchase-redeem-status" id="purchase-convert-status"></div>
+            <div class="purchase-generated-code">
+              <div class="purchase-generated-label" data-i18n="purchase.generatedCodeLabel">最新生成兑换码</div>
+              <div class="purchase-generated-value" id="purchase-generated-code">--</div>
+            </div>
+            <button class="purchase-btn purchase-btn-secondary" id="purchase-convert-btn" data-i18n="purchase.convertConfirm">生成兑换码</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全局提示组件 -->
+  <div class="toast error-toast hidden" id="error-toast">
+    <div class="toast-content">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      <span id="error-message"></span>
+    </div>
+    <button class="toast-close" id="error-close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="toast success-toast hidden" id="success-toast">
+    <div class="toast-content">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span id="success-message"></span>
+    </div>
+  </div>
+
+  <a class="admin-entry-link hidden" id="admin-entry-link" href="/admin" title="管理后台">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </a>
+
+  <script src="/chart.js?v=htat-20261017a"></script>
+  <script src="/app.js?v=htat-20261017a"></script>
+</body>
+</html>
+

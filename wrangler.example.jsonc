@@ -1,0 +1,24 @@
+// 部署配置示例（脱敏版）
+// 实际部署时请填入你自己的 database_id；生产配置中的 AI 模块绑定与密钥不在此示例范围内。
+{
+	"name": "htat-example",
+	"main": "src/index.js", // 注意：本开源仓库不包含 Worker 入口，此字段仅示意
+	"compatibility_date": "2026-03-10",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": "./public"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "htat",
+			"database_id": "<your-d1-database-id>",
+			"migrations_dir": "migrations"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
+}
