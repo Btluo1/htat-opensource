@@ -513,6 +513,14 @@ export async function redeemCreditsByCode(db, userId, codeInput) {
           version = version + 1,
           updated_at = ?3
         WHERE user_id = ?2
+          AND EXISTS (
+            SELECT 1
+            FROM redeem_codes
+            WHERE code_normalized = ?1
+              AND redeemed_by = ?2
+              AND redeemed_at = ?3
+              AND status = 'redeemed'
+          )
       `).bind(matchedCodeNormalized, userId, now),
       db.prepare(`
         INSERT INTO wallet_ledger (
@@ -532,14 +540,8 @@ export async function redeemCreditsByCode(db, userId, codeInput) {
           balance_after_locked_reward,
           metadata_json,
           created_at
-        ) VALUES (
-          ?1,
-          ?2,
-          'redeem_code',
-          ?3,
-          'redeem_code',
-          'credit',
-          'purchased',
+        )
+        SELECT ?1, ?2, 'redeem_code', ?3, 'redeem_code', 'credit', 'purchased',
           (
             SELECT credits
             FROM redeem_codes
@@ -556,9 +558,38 @@ export async function redeemCreditsByCode(db, userId, codeInput) {
           (SELECT locked_reward FROM user_wallets WHERE user_id = ?2),
           ?6,
           ?5
+        WHERE EXISTS (
+          SELECT 1
+          FROM redeem_codes
+          WHERE code_normalized = ?4
+            AND redeemed_by = ?2
+            AND redeemed_at = ?5
+            AND status = 'redeemed'
         )
       `).bind(ledgerId, userId, redeemRow.id, matchedCodeNormalized, now, metadataJson),
     ]);
+
+    // 认领 UPDATE 未命中（并发被抢先 / 已失效）时，上方 EXISTS 守卫保证钱包与账本零改动；
+    // 此处按最新状态返回明确错误，而不是让子查询的 NULL 污染余额并误报成功
+    const claimUpdated = results[0]?.meta?.changes === 1;
+    const walletUpdated = results[1]?.meta?.changes === 1;
+    if (!claimUpdated || !walletUpdated) {
+      const latestRow = await first(db, `
+        SELECT id, code, code_normalized, credits, note, status, source_type, created_by, created_at, redeemed_by, redeemed_at
+        FROM redeem_codes
+        WHERE code_normalized = ?1
+        LIMIT 1
+      `, matchedCodeNormalized);
+      const latestStatus = resolveRedeemCodeStatus(latestRow);
+      if (latestStatus === 'disabled') {
+        return { success: false, error: '兑换码已失效' };
+      }
+      if (latestStatus === 'redeemed') {
+        return { success: false, error: '兑换码已被使用' };
+      }
+      console.error('Redeem code claim failed:', { claimUpdated, walletUpdated });
+      return { success: false, error: '兑换失败，请稍后再试' };
+    }
   } catch (error) {
     const latestRow = await first(db, `
       SELECT id, code, code_normalized, credits, note, status, source_type, created_by, created_at, redeemed_by, redeemed_at

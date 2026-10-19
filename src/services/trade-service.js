@@ -8,8 +8,6 @@ import {
   settleWalletFunds,
 } from './wallet-service.js';
 
-const tradeSchemaCache = new WeakMap();
-
 const TRADE_SCHEMA = {
   positionMarginRewardColumn: 'margin_reward',
   eventMarginRewardDeltaColumn: 'margin_reward_delta',
@@ -18,30 +16,6 @@ const MIN_MANUAL_TRADE_MARGIN = 1;
 
 function getCachedTradeSchema() {
   return TRADE_SCHEMA;
-}
-
-// 用户交易统计辅助函数
-function buildUpdateTradeStatsStatement(db, userId, pnl, isWin, expectedVersion, now) {
-  return db.prepare(`
-    UPDATE user_trade_stats
-    SET
-      total_trade_count = total_trade_count + 1,
-      closed_trade_count = closed_trade_count + 1,
-      win_trade_count = win_trade_count + ?2,
-      loss_trade_count = loss_trade_count + ?3,
-      realized_pnl_total = realized_pnl_total + ?4,
-      last_trade_at = ?5,
-      updated_at = ?5
-    WHERE user_id = ?1 AND version = ?6
-  `).bind(userId, isWin ? 1 : 0, isWin ? 0 : 1, pnl, now, expectedVersion);
-}
-
-function buildInsertTradeStatsStatement(db, userId, pnl, isWin, now) {
-  return db.prepare(`
-    INSERT INTO user_trade_stats (
-      user_id, total_trade_count, closed_trade_count, win_trade_count, loss_trade_count, realized_pnl_total, last_trade_at, updated_at
-    ) VALUES (?1, 1, 1, ?2, ?3, ?4, ?5, ?5)
-  `).bind(userId, isWin ? 1 : 0, isWin ? 0 : 1, pnl, now);
 }
 
 function buildCreateOrUpdateTradeStats(db, userId, pnl, now) {
